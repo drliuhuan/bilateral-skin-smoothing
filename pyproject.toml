@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bilateral-skin-smoothing"
+version = "0.1.0"
+description = "Multi-scale bilateral-grid skin smoothing with an optional U-2-Net automatic mask"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "drliuhuan" }]
+keywords = ["image-processing", "skin-smoothing", "bilateral-filter", "bilateral-grid", "portrait", "retouching"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy>=1.24",
+    "Pillow>=9",
+]
+
+[project.optional-dependencies]
+mask = ["opencv-python-headless>=4.8"]
+dev = ["pytest>=7", "build>=1.0", "twine>=5"]
+
+[project.scripts]
+bss-fetch-model = "skin_smoothing:_fetch_cli"
+
+[project.urls]
+Homepage = "https://github.com/drliuhuan/bilateral-skin-smoothing"
+Source = "https://github.com/drliuhuan/bilateral-skin-smoothing"
+Issues = "https://github.com/drliuhuan/bilateral-skin-smoothing/issues"
+
+[tool.setuptools]
+py-modules = ["skin_smoothing", "synthetic"]

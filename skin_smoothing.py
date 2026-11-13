@@ -55,6 +55,8 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
+__version__ = "0.1.0"
+
 __all__ = [
     # image i/o
     "load_image", "save_image", "png_bit_depth", "to_uint", "from_uint",
@@ -65,7 +67,7 @@ __all__ = [
     "detail_decompose", "combine_levels", "threshold_gain",
     "soft_matte", "mask_blur", "blend_masked", "build_skin_mask", "rgb_to_hsv",
     "unsharp", "adjust_tone",
-    # modelled internal format + bilateral-grid chain
+    # internal packed format + bilateral-grid chain
     "ycc_unpack", "ycc_pack", "blur121", "lerp12", "FP12_MAX",
     "bilateral_grid_smooth", "bilateral_grid_pyramid", "apply_sharp_and_soft",
     # top level
@@ -900,15 +902,58 @@ def build_skin_mask(
 _U2NET_CACHE = {}
 
 
+U2NET_URL = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx"
+U2NET_SHA256 = "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8"
+
+
+def u2net_cache_path():
+    """Default cache location for the optional U-2-Net weights."""
+    return os.path.join(os.path.expanduser("~"), ".cache",
+                        "bilateral-skin-smoothing", "u2netp.onnx")
+
+
 def _u2net_model_path(model_path=None):
-    if model_path and os.path.exists(model_path):
-        return model_path
+    """Resolve the U-2-Net weights: explicit path > env > local/repo > cache."""
+    candidates = []
+    if model_path:
+        candidates.append(model_path)
     env = os.environ.get("U2NET_MODEL_PATH")
-    if env and os.path.exists(env):
-        return env
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cand = os.path.join(root, "models", "u2netp.onnx")
-    return cand if os.path.exists(cand) else None
+    if env:
+        candidates.append(env)
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates += [
+        os.path.join(here, "models", "u2netp.onnx"),                  # source checkout
+        os.path.join(os.path.dirname(here), "models", "u2netp.onnx"),
+        os.path.join(os.getcwd(), "models", "u2netp.onnx"),
+        u2net_cache_path(),
+    ]
+    for cand in candidates:
+        if cand and os.path.exists(cand):
+            return cand
+    return None
+
+
+def download_u2net(dest=None):
+    """Download and verify the U-2-Net-lite weights (Apache-2.0).
+
+    ``dest`` defaults to :func:`u2net_cache_path`.  Returns the local path.
+    """
+    import hashlib
+    import urllib.request
+    dest = dest or u2net_cache_path()
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if not os.path.exists(dest):
+        urllib.request.urlretrieve(U2NET_URL, dest)
+    with open(dest, "rb") as fh:
+        digest = hashlib.sha256(fh.read()).hexdigest()
+    if digest != U2NET_SHA256:
+        raise RuntimeError(
+            f"U-2-Net weights SHA-256 mismatch ({digest}); delete {dest} and retry")
+    return dest
+
+
+def _fetch_cli():
+    print(download_u2net())
 
 
 def u2net_person_matte(img, model_path=None, size=320):
